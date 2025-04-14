@@ -3,6 +3,7 @@
 import { useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader';
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { Button } from "@/components/ui/button"
 import { HelpCircle, Download, Share2 } from 'lucide-react';
@@ -12,7 +13,7 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    let scene: THREE.Scene, camera: THREE.PerspectiveCamera, renderer: THREE.WebGLRenderer, controls: OrbitControls, stlModel: THREE.Mesh;
+    let scene: THREE.Scene, camera: THREE.PerspectiveCamera, renderer: THREE.WebGLRenderer, controls: OrbitControls, model: THREE.Mesh | THREE.Group;
 
     const init = () => {
       if (!containerRef.current) return;
@@ -61,52 +62,122 @@ export default function Home() {
       animate();
     };
 
-    const loadSTL = (file: File) => {
+    const loadModel = (file: File) => {
       const reader = new FileReader();
 
       reader.onload = (event) => {
-        const stlContent = event.target?.result;
-        if (!stlContent) return;
+        const fileContent = event.target?.result;
+        if (!fileContent) return;
 
-        const loader = new STLLoader();
-        const geometry = loader.parse(stlContent as string | ArrayBuffer);
+        const fileName = file.name.toLowerCase();
 
         // Ensure old model is removed before adding a new one
-        if (stlModel) {
-          scene.remove(stlModel);
-          geometry.dispose();
-          if (Array.isArray(stlModel.material)) {
-            stlModel.material.forEach(material => material.dispose());
-          } else {
-            stlModel.material.dispose();
+        if (model) {
+          scene.remove(model);
+
+          // Dispose of geometry and material
+          if ((model as THREE.Mesh).geometry) {
+            ((model as THREE.Mesh).geometry as THREE.BufferGeometry).dispose();
+          }
+          if ((model as THREE.Mesh).material) {
+            if (Array.isArray((model as THREE.Mesh).material)) {
+              ((model as THREE.Mesh).material as THREE.Material[]).forEach(material => material.dispose());
+            } else {
+              ((model as THREE.Mesh).material as THREE.Material).dispose();
+            }
           }
         }
+          
+        // Function to create the mesh and add it to the scene
+        const createMesh = (geometry: THREE.BufferGeometry) => {
+            const hasVertexColors = geometry.hasAttribute('color');
+            const material = new THREE.MeshPhongMaterial({
+              color: 0x008080,
+              specular: 0x111111,
+              shininess: 200,
+              vertexColors: hasVertexColors,
+              side: THREE.DoubleSide // Ensure both sides of the faces are rendered
+            });
+    
+            model = new THREE.Mesh(geometry, material);
+            model.castShadow = true;
+            model.receiveShadow = true;
+    
+            geometry.computeBoundingBox();
+            const boundingBox = geometry.boundingBox;
+            if (boundingBox) {
+              const center = new THREE.Vector3();
+              boundingBox.getCenter(center);
+              model.position.sub(center); // Center the model
+    
+              const size = new THREE.Vector3();
+              boundingBox.getSize(size);
+              const maxDimension = Math.max(size.x, size.y, size.z);
+              const scaleFactor = 3 / maxDimension;
+              model.scale.set(scaleFactor, scaleFactor, scaleFactor);
+            }
+    
+            scene.add(model);
+          };
+    
 
-        const material = new THREE.MeshPhongMaterial({ color: 0x008080, specular: 0x111111, shininess: 200 });
-        stlModel = new THREE.Mesh(geometry, material);
 
-        stlModel.castShadow = true;
-        stlModel.receiveShadow = true;
+        if (fileName.endsWith('.stl')) {
+          const loader = new STLLoader();
+          const geometry = loader.parse(fileContent as string | ArrayBuffer);
+          createMesh(geometry);
+        } else if (fileName.endsWith('.obj')) {
+          const loader = new OBJLoader();
+          const object = loader.parse(fileContent as string);
 
-        geometry.computeBoundingBox();
-        const boundingBox = geometry.boundingBox;
-        if (boundingBox) {
-            const center = new THREE.Vector3();
-            boundingBox.getCenter(center);
-            stlModel.position.sub(center); // Center the model
+          // If the loaded object is a group, handle it accordingly
+          if (object instanceof THREE.Group) {
+            model = object;
+            model.traverse(function (child) {
+              if ((child as THREE.Mesh).isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
 
-            const size = new THREE.Vector3();
-            boundingBox.getSize(size);
-            const maxDimension = Math.max(size.x, size.y, size.z);
-            const scaleFactor = 3 / maxDimension;
-            stlModel.scale.set(scaleFactor, scaleFactor, scaleFactor);
+                const hasVertexColors = (child.geometry as THREE.BufferGeometry).hasAttribute('color');
+                const material = new THREE.MeshPhongMaterial({
+                    color: 0x008080,
+                    specular: 0x111111,
+                    shininess: 200,
+                    vertexColors: hasVertexColors,
+                    side: THREE.DoubleSide  // Ensure both sides are rendered
+                });
+                (child as THREE.Mesh).material = material;
+
+
+                 (child.geometry as THREE.BufferGeometry).computeBoundingBox();
+                 const boundingBox = (child.geometry as THREE.BufferGeometry).boundingBox;
+                if (boundingBox) {
+                  const center = new THREE.Vector3();
+                  boundingBox.getCenter(center);
+                  child.position.sub(center);
+                  const size = new THREE.Vector3();
+                  boundingBox.getSize(size);
+                  const maxDimension = Math.max(size.x, size.y, size.z);
+                  const scaleFactor = 3 / maxDimension;
+                  child.scale.set(scaleFactor, scaleFactor, scaleFactor);
+                }
+
+
+              }
+            });
+             scene.add(model);
+          } else {
+            // Handle single object OBJ files
+            createMesh((object as THREE.Mesh).geometry as THREE.BufferGeometry);
+          }
         }
-
-
-        scene.add(stlModel);
       };
 
-      reader.readAsArrayBuffer(file);
+      if (file.name.toLowerCase().endsWith('.obj')) {
+        reader.readAsText(file);
+      } else {
+        reader.readAsArrayBuffer(file);
+      }
     };
 
     const onWindowResize = () => {
@@ -127,7 +198,7 @@ export default function Home() {
       if (!input.files || input.files.length === 0) return;
 
       const file = input.files[0];
-      loadSTL(file);
+      loadModel(file);
     };
 
     init();
@@ -147,19 +218,19 @@ export default function Home() {
   return (
     <div className="flex flex-col h-screen bg-background text-foreground">
       <div className="flex-grow flex items-center justify-center p-6">
-        <div className="w-full h-full relative rounded-lg shadow-md overflow-hidden" ref={containerRef}>
-          <input type="file" accept=".stl" ref={fileInputRef} className="hidden" id="stl-upload" />
-            <div className="absolute top-4 right-4 z-10 flex space-x-2">
-              <Button variant="secondary" size="sm" className="rounded-md shadow-sm" onClick={() => fileInputRef.current?.click()}>
-                Upload STL File
+        <div className="w-full h-full relative rounded-lg overflow-hidden" ref={containerRef}>
+          <input type="file" accept=".stl, .obj" ref={fileInputRef} className="hidden" id="stl-upload" />
+            <div className="absolute top-4 right-4 flex space-x-2">
+              <Button variant="secondary" size="sm"  onClick={() => fileInputRef.current?.click()}>
+                Upload STL/OBJ File
               </Button>
-              <Button variant="secondary" size="sm" className="rounded-md shadow-sm">
+              <Button variant="secondary" size="sm">
                 <Share2 className="h-4 w-4 mr-2" /> Share
               </Button>
-              <Button variant="secondary" size="sm" className="rounded-md shadow-sm">
+              <Button variant="secondary" size="sm">
                 <Download className="h-4 w-4 mr-2" /> Download
               </Button>
-              <Button variant="secondary" size="sm" className="rounded-md shadow-sm">
+              <Button variant="secondary" size="sm">
                 <HelpCircle className="h-4 w-4" />
               </Button>
             </div>
