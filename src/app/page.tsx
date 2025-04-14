@@ -137,16 +137,20 @@ export default function Home() {
               if ((child as THREE.Mesh).isMesh) {
                 child.castShadow = true;
                 child.receiveShadow = true;
+                
+                // Check if the child has existing material
+                if (!(child as THREE.Mesh).material) {
 
-                const hasVertexColors = (child.geometry as THREE.BufferGeometry).hasAttribute('color');
-                const material = new THREE.MeshPhongMaterial({
-                    color: 0x008080,
-                    specular: 0x111111,
-                    shininess: 200,
-                    vertexColors: hasVertexColors,
-                    side: THREE.DoubleSide  // Ensure both sides are rendered
-                });
-                (child as THREE.Mesh).material = material;
+                  const hasVertexColors = (child.geometry as THREE.BufferGeometry).hasAttribute('color');
+                  const material = new THREE.MeshPhongMaterial({
+                      color: 0x008080,
+                      specular: 0x111111,
+                      shininess: 200,
+                      vertexColors: hasVertexColors,
+                      side: THREE.DoubleSide  // Ensure both sides are rendered
+                  });
+                  (child as THREE.Mesh).material = material;
+                }
 
 
                  (child.geometry as THREE.BufferGeometry).computeBoundingBox();
