@@ -249,11 +249,13 @@ export default function Home() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>How to use the Viewer</AlertDialogTitle>
                     <AlertDialogDescription>
-                      <ul className="list-disc pl-5">
-                        <li>Upload an STL or OBJ file using the "Upload STL/OBJ File" button.</li>
-                        <li>Rotate the model by clicking and dragging on the 3D space.</li>
-                        <li>Zoom in and out using the mouse wheel or pinch gestures.</li>
-                      </ul>
+                      <div>
+                        <ul className="list-disc pl-5">
+                          <li>Upload an STL or OBJ file using the "Upload STL/OBJ File" button.</li>
+                          <li>Rotate the model by clicking and dragging on the 3D space.</li>
+                          <li>Zoom in and out using the mouse wheel or pinch gestures.</li>
+                        </ul>
+                      </div>
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -267,3 +269,4 @@ export default function Home() {
     </div>
   );
 }
+
