@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { Button } from "@/components/ui/button"
-import Image from 'next/image';
+import { HelpCircle, Download, Share2 } from 'lucide-react';
 
 export default function Home() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -19,8 +19,8 @@ export default function Home() {
 
       // Scene
       scene = new THREE.Scene();
-      scene.background = new THREE.Color(0xaaaaaa);
-      scene.fog = new THREE.Fog(0xaaaaaa, 2, 15);
+      scene.background = new THREE.Color(0xe0e0e0);
+      scene.fog = new THREE.Fog(0xe0e0e0, 2, 15);
 
       // Camera
       camera = new THREE.PerspectiveCamera(75, containerRef.current.clientWidth / containerRef.current.clientHeight, 0.1, 1000);
@@ -146,18 +146,21 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground">
-      <div className="p-6 border-b border-border shadow-sm bg-secondary text-secondary-foreground rounded-md flex items-center justify-between">
-      <div className="flex items-center">
-          
-          <h1 className="text-lg font-semibold">STL View Master</h1>
-        </div>
-      </div>
       <div className="flex-grow flex items-center justify-center p-6">
         <div className="w-full h-full relative rounded-lg shadow-md overflow-hidden" ref={containerRef}>
           <input type="file" accept=".stl" ref={fileInputRef} className="hidden" id="stl-upload" />
-            <div className="absolute top-4 left-4 z-10">
+            <div className="absolute top-4 right-4 z-10 flex space-x-2">
               <Button variant="secondary" size="sm" className="rounded-md shadow-sm" onClick={() => fileInputRef.current?.click()}>
                 Upload STL File
+              </Button>
+              <Button variant="secondary" size="sm" className="rounded-md shadow-sm">
+                <Share2 className="h-4 w-4 mr-2" /> Share
+              </Button>
+              <Button variant="secondary" size="sm" className="rounded-md shadow-sm">
+                <Download className="h-4 w-4 mr-2" /> Download
+              </Button>
+              <Button variant="secondary" size="sm" className="rounded-md shadow-sm">
+                <HelpCircle className="h-4 w-4" />
               </Button>
             </div>
         </div>
@@ -165,4 +168,3 @@ export default function Home() {
     </div>
   );
 }
-
