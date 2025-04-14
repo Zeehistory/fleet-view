@@ -144,15 +144,15 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="flex flex-col h-screen">
-      <div className="p-4 border-b bg-secondary text-secondary-foreground">
+    <div className="flex flex-col h-screen bg-background text-foreground">
+      <div className="p-6 border-b border-border shadow-sm bg-secondary text-secondary-foreground rounded-md">
         <h1 className="text-lg font-semibold">STL View Master</h1>
       </div>
-      <div className="flex-grow flex items-center justify-center">
-        <div className="w-full h-full relative" ref={containerRef}>
+      <div className="flex-grow flex items-center justify-center p-6">
+        <div className="w-full h-full relative rounded-lg shadow-md overflow-hidden" ref={containerRef}>
           <input type="file" accept=".stl" ref={fileInputRef} className="hidden" id="stl-upload" />
             <div className="absolute top-4 left-4 z-10">
-              <Button variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()}>
+              <Button variant="secondary" size="sm" className="rounded-md shadow-sm" onClick={() => fileInputRef.current?.click()}>
                 Upload STL File
               </Button>
             </div>
