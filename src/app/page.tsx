@@ -5,6 +5,10 @@ import * as THREE from 'three';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { Button } from "@/components/ui/button"
+import Image from 'next/image';
+
+// Import the logo image
+import fleetLogo from '/fleet-logo.png';
 
 export default function Home() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -145,8 +149,11 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground">
-      <div className="p-6 border-b border-border shadow-sm bg-secondary text-secondary-foreground rounded-md">
-        <h1 className="text-lg font-semibold">STL View Master</h1>
+      <div className="p-6 border-b border-border shadow-sm bg-secondary text-secondary-foreground rounded-md flex items-center justify-between">
+      <div className="flex items-center">
+          <Image src={fleetLogo} alt="FleetView Logo" width={40} height={40} className="mr-4" />
+          <h1 className="text-lg font-semibold">FleetView</h1>
+        </div>
       </div>
       <div className="flex-grow flex items-center justify-center p-6">
         <div className="w-full h-full relative rounded-lg shadow-md overflow-hidden" ref={containerRef}>
