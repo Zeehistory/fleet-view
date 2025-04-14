@@ -6,7 +6,7 @@ import { STLLoader } from 'three/examples/jsm/loaders/STLLoader';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { Button } from "@/components/ui/button"
-import { HelpCircle, Download, Share2 } from 'lucide-react';
+import { HelpCircle } from 'lucide-react';
 
 export default function Home() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -229,12 +229,6 @@ export default function Home() {
                 Upload STL/OBJ File
               </Button>
               <Button variant="secondary" size="sm">
-                <Share2 className="h-4 w-4 mr-2" /> Share
-              </Button>
-              <Button variant="secondary" size="sm">
-                <Download className="h-4 w-4 mr-2" /> Download
-              </Button>
-              <Button variant="secondary" size="sm">
                 <HelpCircle className="h-4 w-4" />
               </Button>
             </div>
@@ -243,3 +237,4 @@ export default function Home() {
     </div>
   );
 }
+
