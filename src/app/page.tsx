@@ -1,16 +1,27 @@
 "use client";
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { Button } from "@/components/ui/button"
 import { HelpCircle } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog"
 
 export default function Home() {
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     let scene: THREE.Scene, camera: THREE.PerspectiveCamera, renderer: THREE.WebGLRenderer, controls: OrbitControls, model: THREE.Mesh | THREE.Group;
@@ -228,13 +239,31 @@ export default function Home() {
               <Button variant="secondary" size="sm"  onClick={() => fileInputRef.current?.click()}>
                 Upload STL/OBJ File
               </Button>
-              <Button variant="secondary" size="sm">
-                <HelpCircle className="h-4 w-4" />
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="secondary" size="sm">
+                    <HelpCircle className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>How to use the Viewer</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      <ul className="list-disc pl-5">
+                        <li>Upload an STL or OBJ file using the "Upload STL/OBJ File" button.</li>
+                        <li>Rotate the model by clicking and dragging on the 3D space.</li>
+                        <li>Zoom in and out using the mouse wheel or pinch gestures.</li>
+                      </ul>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Close</AlertDialogCancel>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
         </div>
       </div>
     </div>
   );
 }
-
