@@ -434,11 +434,11 @@ export default function Home() {
         <div className="w-full h-full relative rounded-lg overflow-hidden" ref={containerRef}>
           <input type="file" accept=".stl, .obj, .glb, .gltf" ref={fileInputRef} className="hidden" id="stl-upload" />
           <input type="file" accept=".mtl" ref={mtlFileInputRef} className="hidden" id="mtl-upload" />
-          <div className="absolute top-4 left-12 z-10">
+          <div style={{ position: 'absolute', top: '25px', left: '25px', zIndex: 10 }}>
             <img 
               src="/fleet-logo.png"
               alt="Fleet Robotics Logo" 
-              className="h-12 w-auto"
+              style={{ height: '48px', width: 'auto' }}
             />
           </div>
             <div className="absolute top-4 right-4 flex space-x-2">
