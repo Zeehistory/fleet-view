@@ -7,13 +7,11 @@ import { STLLoader } from 'three/examples/jsm/loaders/STLLoader';
 // @ts-ignore
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 // @ts-ignore
-import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader';
-// @ts-ignore
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 // @ts-ignore
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { Button } from "@/components/ui/button"
-import { HelpCircle, Palette, Box } from 'lucide-react';
+import { HelpCircle, Palette, Box, Circle } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -28,11 +26,8 @@ import {
 export default function Home() {
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const mtlFileInputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
-  const [mtlFile, setMtlFile] = useState<File | null>(null);
-  const [currentObjFile, setCurrentObjFile] = useState<File | null>(null);
-  const [isWireframe, setIsWireframe] = useState(false);
+  const [viewMode, setViewMode] = useState<'color' | 'wireframe' | 'smooth'>('color');
   const [originalMaterials, setOriginalMaterials] = useState<Map<THREE.Mesh, THREE.Material>>(new Map());
   const [currentModel, setCurrentModel] = useState<THREE.Object3D | null>(null);
 
@@ -74,9 +69,15 @@ export default function Home() {
       controls.enableDamping = true;
       controls.dampingFactor = 0.05;
       controls.screenSpacePanning = false;
-      controls.minDistance = 0.001;  // Allow closer zoom
-      controls.maxDistance = 50;   // Allow further zoom out
-      controls.target.set(0, 1, 0);
+      controls.minDistance = 0.1;  // Allow closer zoom
+      controls.maxDistance = 100;  // Allow further zoom out
+      controls.maxPolarAngle = Math.PI; // Allow full vertical rotation
+      controls.minPolarAngle = 0; // Allow full vertical rotation
+      controls.enablePan = true; // Enable panning
+      controls.panSpeed = 0.5; // Adjust pan speed
+      controls.rotateSpeed = 0.5; // Adjust rotation speed
+      controls.zoomSpeed = 1.0; // Adjust zoom speed
+      controls.target.set(0, 0, 0); // Center the target
       controls.update();
 
       // Handle window resize
@@ -137,7 +138,7 @@ export default function Home() {
         setCurrentModel(model);
       };
 
-      // Function to process the loaded object (whether from MTL or not)
+      // Function to process the loaded object
       const processLoadedObject = (object: THREE.Object3D) => {
         if (object instanceof THREE.Group) {
           model = object;
@@ -226,34 +227,10 @@ export default function Home() {
           const geometry = loader.parse(fileContent as string | ArrayBuffer);
           createMesh(geometry);
         } else if (fileName.endsWith('.obj')) {
-          // Store the OBJ file for later use with MTL
-          setCurrentObjFile(file);
-          
-          // Check if we have an MTL file
-          if (mtlFile) {
-            const mtlReader = new FileReader();
-            mtlReader.onload = (mtlEvent) => {
-              const mtlContent = mtlEvent.target?.result;
-              if (!mtlContent) return;
-              
-              const mtlLoader = new MTLLoader();
-              const materials = mtlLoader.parse(mtlContent as string);
-              materials.preload();
-              
-              const objLoader = new OBJLoader();
-              objLoader.setMaterials(materials);
-              const object = objLoader.parse(fileContent as string);
-              
-              processLoadedObject(object);
-            };
-            
-            mtlReader.readAsText(mtlFile);
-          } else {
-            // No MTL file, use default OBJ loader
-            const loader = new OBJLoader();
-            const object = loader.parse(fileContent as string);
-            processLoadedObject(object);
-          }
+          // No MTL file, use default OBJ loader
+          const loader = new OBJLoader();
+          const object = loader.parse(fileContent as string);
+          processLoadedObject(object);
         } else if (fileName.endsWith('.glb') || fileName.endsWith('.gltf')) {
           // Load GLB/GLTF files
           const loader = new GLTFLoader();
@@ -347,27 +324,10 @@ export default function Home() {
       loadModel(file);
     };
 
-    const handleMtlFileSelect = (event: Event) => {
-      const input = event.target as HTMLInputElement;
-      if (!input.files || input.files.length === 0) return;
-
-      const file = input.files[0];
-      setMtlFile(file);
-      
-      // If we already have an OBJ file loaded, reload it with the new MTL file
-      if (currentObjFile) {
-        loadModel(currentObjFile);
-      }
-    };
-
     init();
 
     if (fileInputRef.current) {
       fileInputRef.current.addEventListener('change', handleFileSelect);
-    }
-
-    if (mtlFileInputRef.current) {
-      mtlFileInputRef.current.addEventListener('change', handleMtlFileSelect);
     }
 
     return () => {
@@ -375,57 +335,179 @@ export default function Home() {
       if (fileInputRef.current) {
         fileInputRef.current.removeEventListener('change', handleFileSelect);
       }
-      if (mtlFileInputRef.current) {
-        mtlFileInputRef.current.removeEventListener('change', handleMtlFileSelect);
-      }
     };
-  }, [mtlFile, currentObjFile]);
+  }, []);
 
-  // Toggle between colored and wireframe view
-  const toggleWireframe = () => {
+  // Toggle between colored, wireframe, and smooth views
+  const toggleViewMode = () => {
     if (!currentModel) return;
     
-    const newIsWireframe = !isWireframe;
-    setIsWireframe(newIsWireframe);
+    // Cycle through the three view modes
+    const nextMode = viewMode === 'color' ? 'wireframe' : viewMode === 'wireframe' ? 'smooth' : 'color';
+    setViewMode(nextMode);
     
-    // Create a wireframe material
+    // Create materials for each view mode
     const wireframeMaterial = new THREE.MeshBasicMaterial({
       color: 0x000000,
       wireframe: true,
       wireframeLinewidth: 1,
     });
     
-    // Apply the appropriate material to all meshes
-    currentModel.traverse((child: THREE.Object3D) => {
-      if ((child as THREE.Mesh).isMesh) {
-        const mesh = child as THREE.Mesh;
-        
-        if (newIsWireframe) {
-          // Store the current material if not already stored
-          if (!originalMaterials.has(mesh)) {
-            if (mesh.material) {
-              if (Array.isArray(mesh.material)) {
-                // For meshes with multiple materials, store the first one
-                if (mesh.material.length > 0) {
-                  originalMaterials.set(mesh, mesh.material[0]);
-                }
-              } else {
-                originalMaterials.set(mesh, mesh.material);
-              }
-            }
-          }
-          
-          // Apply wireframe material
-          mesh.material = wireframeMaterial;
-        } else {
-          // Restore the original material
-          const originalMaterial = originalMaterials.get(mesh);
-          if (originalMaterial) {
-            mesh.material = originalMaterial;
-          }
+    // Create a procedural texture for the smooth view
+    const textureSize = 512;
+    const canvas = document.createElement('canvas');
+    canvas.width = textureSize;
+    canvas.height = textureSize;
+    const context = canvas.getContext('2d');
+    
+    if (context) {
+      // Create a noise pattern
+      for (let i = 0; i < textureSize; i++) {
+        for (let j = 0; j < textureSize; j++) {
+          // Create a noise pattern
+          const value = Math.random() * 255;
+          context.fillStyle = `rgb(${value},${value},${value})`;
+          context.fillRect(i, j, 1, 1);
         }
       }
-    });
+      
+      // Create a texture from the canvas
+      const proceduralTexture = new THREE.CanvasTexture(canvas);
+      proceduralTexture.wrapS = THREE.RepeatWrapping;
+      proceduralTexture.wrapT = THREE.RepeatWrapping;
+      proceduralTexture.repeat.set(4, 4);
+      
+      const smoothMaterial = new THREE.MeshStandardMaterial({
+        color: 0xcccccc,
+        side: THREE.DoubleSide,
+        metalness: 0.1,
+        roughness: 0.7,
+        flatShading: false,
+        bumpMap: proceduralTexture,
+        bumpScale: 0.05,
+      });
+      
+      // Apply the appropriate material to all meshes
+      currentModel.traverse((child: THREE.Object3D) => {
+        if ((child as THREE.Mesh).isMesh) {
+          const mesh = child as THREE.Mesh;
+          
+          if (nextMode === 'wireframe') {
+            // Store the current material if not already stored
+            if (!originalMaterials.has(mesh)) {
+              if (mesh.material) {
+                if (Array.isArray(mesh.material)) {
+                  // For meshes with multiple materials, store the first one
+                  if (mesh.material.length > 0) {
+                    originalMaterials.set(mesh, mesh.material[0]);
+                  }
+                } else {
+                  originalMaterials.set(mesh, mesh.material);
+                }
+              }
+            }
+            
+            // Apply wireframe material
+            mesh.material = wireframeMaterial;
+          } else if (nextMode === 'smooth') {
+            // Store the current material if not already stored
+            if (!originalMaterials.has(mesh)) {
+              if (mesh.material) {
+                if (Array.isArray(mesh.material)) {
+                  // For meshes with multiple materials, store the first one
+                  if (mesh.material.length > 0) {
+                    originalMaterials.set(mesh, mesh.material[0]);
+                  }
+                } else {
+                  originalMaterials.set(mesh, mesh.material);
+                }
+              }
+            }
+            
+            // Apply smooth material
+            mesh.material = smoothMaterial;
+          } else {
+            // Restore the original material
+            const originalMaterial = originalMaterials.get(mesh);
+            if (originalMaterial) {
+              mesh.material = originalMaterial;
+            }
+          }
+        }
+      });
+    } else {
+      // Fallback if canvas context is not available
+      const smoothMaterial = new THREE.MeshStandardMaterial({
+        color: 0xcccccc,
+        side: THREE.DoubleSide,
+        metalness: 0.1,
+        roughness: 0.7,
+        flatShading: false,
+      });
+      
+      // Apply the appropriate material to all meshes
+      currentModel.traverse((child: THREE.Object3D) => {
+        if ((child as THREE.Mesh).isMesh) {
+          const mesh = child as THREE.Mesh;
+          
+          if (nextMode === 'wireframe') {
+            // Store the current material if not already stored
+            if (!originalMaterials.has(mesh)) {
+              if (mesh.material) {
+                if (Array.isArray(mesh.material)) {
+                  // For meshes with multiple materials, store the first one
+                  if (mesh.material.length > 0) {
+                    originalMaterials.set(mesh, mesh.material[0]);
+                  }
+                } else {
+                  originalMaterials.set(mesh, mesh.material);
+                }
+              }
+            }
+            
+            // Apply wireframe material
+            mesh.material = wireframeMaterial;
+          } else if (nextMode === 'smooth') {
+            // Store the current material if not already stored
+            if (!originalMaterials.has(mesh)) {
+              if (mesh.material) {
+                if (Array.isArray(mesh.material)) {
+                  // For meshes with multiple materials, store the first one
+                  if (mesh.material.length > 0) {
+                    originalMaterials.set(mesh, mesh.material[0]);
+                  }
+                } else {
+                  originalMaterials.set(mesh, mesh.material);
+                }
+              }
+            }
+            
+            // Apply smooth material
+            mesh.material = smoothMaterial;
+          } else {
+            // Restore the original material
+            const originalMaterial = originalMaterials.get(mesh);
+            if (originalMaterial) {
+              mesh.material = originalMaterial;
+            }
+          }
+        }
+      });
+    }
+  };
+
+  // Get the appropriate icon for the current view mode
+  const getViewModeIcon = () => {
+    switch (viewMode) {
+      case 'color':
+        return <Palette className="h-4 w-4" />;
+      case 'wireframe':
+        return <Box className="h-4 w-4" />;
+      case 'smooth':
+        return <Circle className="h-4 w-4" />;
+      default:
+        return <Palette className="h-4 w-4" />;
+    }
   };
 
   return (
@@ -433,7 +515,6 @@ export default function Home() {
       <div className="flex-grow flex items-center justify-center p-6">
         <div className="w-full h-full relative rounded-lg overflow-hidden" ref={containerRef}>
           <input type="file" accept=".stl, .obj, .glb, .gltf" ref={fileInputRef} className="hidden" id="stl-upload" />
-          <input type="file" accept=".mtl" ref={mtlFileInputRef} className="hidden" id="mtl-upload" />
           <div style={{ position: 'absolute', top: '25px', left: '25px', zIndex: 10 }}>
             <img 
               src="/fleet-logo.png"
@@ -441,44 +522,45 @@ export default function Home() {
               style={{ height: '48px', width: 'auto' }}
             />
           </div>
-            <div className="absolute top-4 right-4 flex space-x-2">
-              <Button variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()}>
-                Upload 3D Model
-              </Button>
-              <Button variant="secondary" size="sm" onClick={() => mtlFileInputRef.current?.click()}>
-                Upload MTL File
-              </Button>
-              <Button variant="secondary" size="sm" onClick={toggleWireframe}>
-                {isWireframe ? <Palette className="h-4 w-4" /> : <Box className="h-4 w-4" />}
-              </Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="secondary" size="sm">
-                    <HelpCircle className="h-4 w-4" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>How to use the Viewer</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      <div>
+          <div className="absolute top-4 right-4 flex space-x-2">
+            <Button variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()}>
+              Upload 3D Model
+            </Button>
+            <Button variant="secondary" size="sm" onClick={toggleViewMode}>
+              {getViewModeIcon()}
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="secondary" size="sm">
+                  <HelpCircle className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>How to use the Viewer</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    <div>
+                      <ul className="list-disc pl-5">
+                        <li>Upload an STL, OBJ, GLB, or GLTF file using the "Upload 3D Model" button.</li>
+                        <li>GLB/GLTF files contain both geometry and materials in a single file.</li>
+                        <li>Use the toggle button to switch between three view modes:</li>
                         <ul className="list-disc pl-5">
-                          <li>Upload an STL, OBJ, GLB, or GLTF file using the "Upload 3D Model" button.</li>
-                          <li>For OBJ files with materials, upload the corresponding MTL file using the "Upload MTL File" button.</li>
-                          <li>GLB/GLTF files contain both geometry and materials in a single file.</li>
-                          <li>Use the toggle button to switch between colored and wireframe views.</li>
-                          <li>Rotate the model by clicking and dragging on the 3D space.</li>
-                          <li>Zoom in and out using the mouse wheel or pinch gestures.</li>
+                          <li>Colored view (default)</li>
+                          <li>Wireframe view (geometric lines)</li>
+                          <li>Smooth mesh view (without color)</li>
                         </ul>
-                      </div>
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Close</AlertDialogCancel>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
+                        <li>Rotate the model by clicking and dragging on the 3D space.</li>
+                        <li>Zoom in and out using the mouse wheel or pinch gestures.</li>
+                      </ul>
+                    </div>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Close</AlertDialogCancel>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </div>
       </div>
     </div>
