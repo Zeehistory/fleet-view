@@ -70,7 +70,7 @@ export default function Home() {
       controls.dampingFactor = 0.05;
       controls.screenSpacePanning = false;
       controls.minDistance = 0.1;  // Allow closer zoom
-      controls.maxDistance = 100;  // Allow further zoom out
+      controls.maxDistance = 50;  // Allow further zoom out
       controls.maxPolarAngle = Math.PI; // Allow full vertical rotation
       controls.minPolarAngle = 0; // Allow full vertical rotation
       controls.enablePan = true; // Enable panning
